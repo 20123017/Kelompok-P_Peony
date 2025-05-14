@@ -70,7 +70,7 @@ def plotScatterMatrix(df, plotSize, textSize):
 
 # Membaca data wine quality
 nRowsRead = 1000
-df1 = pd.read_csv('data/winequality-red.csv', delimiter=',', nrows=nRowsRead)
+df1 = pd.read_csv('"C:\xampp\htdocs\Salsabila Wali D dan Dedesiska\winequality-red.csv"', delimiter=',', nrows=nRowsRead)
 nRow, nCol = df1.shape
 print(f'There are {nRow} rows and {nCol} columns')
 
