@@ -1,77 +1,65 @@
-from mpl_toolkits.mplot3d import Axes3D
-from sklearn.preprocessing import StandardScaler
-import matplotlib.pyplot as plt
-import numpy as np
-import os
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-# Melihat file yang tersedia (jika di Kaggle)
-for dirname, _, filenames in os.walk('/kaggle/input'):
-    for filename in filenames:
-        print(os.path.join(dirname, filename))
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import pickle
 
-# Distribution graphs (histogram/bar graph) of column data
-def plotPerColumnDistribution(df, nGraphShown, nGraphPerRow):
-    nunique = df.nunique()
-    df = df[[col for col in df if nunique[col] > 1 and nunique[col] < 50]]
-    nRow, nCol = df.shape
-    columnNames = list(df)
-    nGraphRow = (nCol + nGraphPerRow - 1) // nGraphPerRow
-    plt.figure(figsize=(6 * nGraphPerRow, 8 * nGraphRow), dpi=80, facecolor='w', edgecolor='k')
-    for i in range(min(nCol, nGraphShown)):
-        plt.subplot(nGraphRow, nGraphPerRow, i + 1)
-        columnDf = df.iloc[:, i]
-        if not np.issubdtype(type(columnDf.iloc[0]), np.number):
-            valueCounts = columnDf.value_counts()
-            valueCounts.plot.bar()
-        else:
-            columnDf.hist()
-        plt.ylabel('counts')
-        plt.xticks(rotation=90)
-        plt.title(f'{columnNames[i]} (column {i})')
-    plt.tight_layout(pad=1.0, w_pad=1.0, h_pad=1.0)
-    plt.show()
+df = pd.read_csv('winequality-red.csv')  
+print("✅ Data berhasil dimuat!")
 
-# Correlation matrix
-def plotCorrelationMatrix(df, graphWidth):
-    df = df.dropna(axis=1)  # Drop columns with NaN
-    df = df[[col for col in df if df[col].nunique() > 1]]  # Keep informative columns
-    if df.shape[1] < 2:
-        print(f'No correlation plots shown: The number of non-NaN or constant columns ({df.shape[1]}) is less than 2')
-        return
-    corr = df.corr()
-    plt.figure(figsize=(graphWidth, graphWidth), dpi=80, facecolor='w', edgecolor='k')
-    corrMat = plt.matshow(corr, fignum=1)
-    plt.xticks(range(len(corr.columns)), corr.columns, rotation=90)
-    plt.yticks(range(len(corr.columns)), corr.columns)
-    plt.gca().xaxis.tick_bottom()
-    plt.colorbar(corrMat)
-    plt.title('Correlation Matrix', fontsize=15)
-    plt.show()
+print("\n📌 5 Baris Pertama:")
+print(df.head())
 
-# Scatter and density plots
-def plotScatterMatrix(df, plotSize, textSize):
-    df = df.select_dtypes(include=[np.number])  # keep only numerical columns
-    df = df.dropna(axis=1)
-    df = df[[col for col in df if df[col].nunique() > 1]]
-    columnNames = list(df)
-    if len(columnNames) > 10:
-        columnNames = columnNames[:10]
-    df = df[columnNames]
-    ax = pd.plotting.scatter_matrix(df, alpha=0.75, figsize=[plotSize, plotSize], diagonal='kde')
-    corrs = df.corr().values
-    for i in range(len(columnNames)):
-        for j in range(len(columnNames)):
-            if i < j:
-                ax[i, j].annotate(f'Corr = {corrs[i, j]:.2f}', (0.8, 0.2), xycoords='axes fraction', 
-                                  ha='center', va='center', size=textSize)
-    plt.suptitle('Scatter and Density Plot')
-    plt.show()
+print("\n📌 Informasi Data:")
+print(df.info())
 
-# Membaca data wine quality
-nRowsRead = 1000
-df1 = pd.read_csv('"C:\xampp\htdocs\Salsabila Wali D dan Dedesiska\winequality-red.csv"', delimiter=',', nrows=nRowsRead)
-nRow, nCol = df1.shape
-print(f'There are {nRow} rows and {nCol} columns')
+print("\n📌 Statistik Deskriptif:")
+print(df.describe())
 
-df1.head(5)
+print("\n📌 Cek Nilai Kosong:")
+print(df.isnull().sum())
+
+plt.figure(figsize=(12, 10))
+sns.heatmap(df.corr(), annot=True, cmap='coolwarm')
+plt.title('🔍 Korelasi Antar Fitur')
+plt.show()
+
+X = df.drop('quality', axis=1)
+y = df['quality']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+model = RandomForestRegressor(random_state=42)
+model.fit(X_train_scaled, y_train)
+
+y_pred = model.predict(X_test_scaled)
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+rmse = np.sqrt(mse)
+r2 = r2_score(y_test, y_pred)
+
+print("\n📈 Evaluasi Model:")
+print(f"MAE  : {mae:.2f}")
+print(f"MSE  : {mse:.2f}")
+print(f"RMSE : {rmse:.2f}")
+print(f"R²   : {r2:.2f}")
+
+with open('wine_quality_model.pkl', 'wb') as f:
+    pickle.dump(model, f)
+
+sample_data = np.array([[7.4, 0.70, 0.00, 1.9, 0.076,
+                         11.0, 34.0, 0.9978, 3.51, 0.56, 9.4]])
+
+sample_scaled = scaler.transform(sample_data)
+predicted_quality = model.predict(sample_scaled)
+
+print(f"\n🔮 Prediksi kualitas anggur untuk data baru: {predicted_quality[0]:.2f}")
